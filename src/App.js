@@ -19,6 +19,7 @@ const App = () => {
   });
   const [showComponentLines, setShowComponentLines] = useState(true);
   const [showLongShortLines, setShowLongShortLines] = useState(false);
+  const [sortConfig, setSortConfig] = useState({ key: 'volume', direction: 'descending' });
   const chartContainerRef = useRef();
   const chartRef = useRef();
 
@@ -286,6 +287,48 @@ const App = () => {
     }
   }, [selectedCoins, resolution, fetchBasketData]);
 
+  const fetchExchangeInfo = useCallback(async () => {
+    try {
+      const response = await fetch('https://fapi.binance.com/fapi/v1/exchangeInfo');
+      const data = await response.json();
+      
+      const symbolsInfo = {};
+      data.symbols.forEach(symbol => {
+        if (symbol.symbol.endsWith('USDT')) {
+          symbolsInfo[symbol.symbol] = {
+            pricePrecision: symbol.pricePrecision,
+            quantityPrecision: symbol.quantityPrecision,
+            category: symbol.underlyingSubType || 'Unknown'
+          };
+        }
+      });
+
+      return symbolsInfo;
+    } catch (error) {
+      console.error('Error fetching exchange info:', error);
+      setError('Failed to fetch exchange info. Please try again later.');
+      return {};
+    }
+  }, []);
+
+  useEffect(() => {
+    const getExchangeInfo = async () => {
+      const symbolsInfo = await fetchExchangeInfo();
+      setCoins(prevCoins => 
+        prevCoins.map(coin => ({
+          ...coin,
+          pricePrecision: symbolsInfo[coin.symbol]?.pricePrecision || 2,
+          quantityPrecision: symbolsInfo[coin.symbol]?.quantityPrecision || 2,
+          category: symbolsInfo[coin.symbol]?.category || 'Unknown'
+        }))
+      );
+    };
+
+    getExchangeInfo();
+  }, [fetchExchangeInfo]);
+
+
+  
   const fetchCoinsData = async () => {
     try {
       const tickerResponse = await fetch('https://fapi.binance.com/fapi/v1/ticker/24hr');
@@ -395,6 +438,38 @@ const App = () => {
       annualizedVolatility: 0,
       individualReturns: []
     });
+  };
+
+  const handleSort = (key) => {
+    let direction = 'ascending';
+    if (sortConfig.key === key && sortConfig.direction === 'ascending') {
+      direction = 'descending';
+    }
+    setSortConfig({ key, direction });
+
+    const sortedCoins = [...coins].sort((a, b) => {
+      if (key === 'symbol' || key === 'category') {
+        if (a[key] < b[key]) {
+          return direction === 'ascending' ? -1 : 1;
+        }
+        if (a[key] > b[key]) {
+          return direction === 'ascending' ? 1 : -1;
+        }
+        return 0;
+      } else {
+        const aValue = parseFloat(a[key]);
+        const bValue = parseFloat(b[key]);
+        if (aValue < bValue) {
+          return direction === 'ascending' ? -1 : 1;
+        }
+        if (aValue > bValue) {
+          return direction === 'ascending' ? 1 : -1;
+        }
+        return 0;
+      }
+    });
+
+    setCoins(sortedCoins);
   };
 
   return (
@@ -512,14 +587,14 @@ const App = () => {
             <table className="w-full table-auto">
               <thead className="sticky top-0 bg-white">
                 <tr className="bg-gray-200">
-                  <th className="px-2 py-2">Coin</th>
-                  <th className="px-2 py-2">Price</th>
-                  <th className="px-2 py-2">24h Change</th>
-                  <th className="px-2 py-2">Volume (USD)</th>
-                  <th className="px-2 py-2">Beta</th>
-                  <th className="px-2 py-2">Category</th>
-                  <th className="px-2 py-2">Correlation</th>
-                  <th className="px-2 py-2">Volatility</th>
+                  <th className="px-2 py-2 cursor-pointer" onClick={() => handleSort('symbol')}>Coin</th>
+                  <th className="px-2 py-2 cursor-pointer" onClick={() => handleSort('price')}>Price</th>
+                  <th className="px-2 py-2 cursor-pointer" onClick={() => handleSort('priceChange')}>24h Change</th>
+                  <th className="px-2 py-2 cursor-pointer" onClick={() => handleSort('volume')}>Volume (USD)</th>
+                  <th className="px-2 py-2 cursor-pointer" onClick={() => handleSort('beta')}>Beta</th>
+                  <th className="px-2 py-2 cursor-pointer" onClick={() => handleSort('category')}>Category</th>
+                  <th className="px-2 py-2 cursor-pointer" onClick={() => handleSort('correlation')}>Correlation</th>
+                  <th className="px-2 py-2 cursor-pointer" onClick={() => handleSort('volatility')}>Volatility</th>
                   <th className="px-2 py-2">Action</th>
                 </tr>
               </thead>
