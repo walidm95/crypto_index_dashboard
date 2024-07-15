@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createChart, ColorType, PriceScaleMode } from 'lightweight-charts';
+import { Allotment } from "allotment";
+import "allotment/dist/style.css";
 
 const App = () => {
   const [coins, setCoins] = useState([]);
@@ -78,6 +80,7 @@ const App = () => {
         chart.applyOptions({ width: chartContainerRef.current.clientWidth });
       };
 
+      // TODO: make the size of the chart dynamic, update width and height based on the pane
       const chart = createChart(chartContainerRef.current, {
         width: chartContainerRef.current.clientWidth,
         height: 400,
@@ -473,172 +476,179 @@ const App = () => {
   };
 
   return (
-    <div className="container mx-auto p-4 max-w-7xl h-screen flex flex-col">
+    <div className="container mx-auto p-4 max-w-7xl flex flex-col h-screen overflow-y-auto">
       <h1 className="text-2xl font-bold mb-4">Custom Index Builder</h1>
 
       {error && <div className="text-red-500 mb-4">{error}</div>}
 
-      <div className="flex flex-col h-full">
+      <Allotment vertical={true} className="flex-grow">
         {/* Top half: Selected Coins and Chart */}
-        <div className="h-1/2 flex">
-          {/* Left side: Selected Coins */}
-          <div className="w-1/2 pr-2 overflow-y-auto">
-            <div className="flex justify-between items-center mb-2 sticky top-0 bg-white">
-              <h2 className="text-xl font-semibold">Selected Coins</h2>
-              <div>
-                <button
-                  onClick={handleUpdateBasket}
-                  className="bg-green-500 text-white px-3 py-1 rounded text-sm mr-2"
-                >
-                  Update
-                </button>
-                <button
-                  onClick={handleClearBasket}
-                  className="bg-red-500 text-white px-3 py-1 rounded text-sm"
-                >
-                  Clear
-                </button>
-              </div>
-            </div>
-            <div className="grid grid-cols-3 gap-2 mb-2 font-semibold">
-              <div>Coin</div>
-              <div className="text-right">Weight</div>
-              <div className="text-center">Action</div>
-            </div>
-            <ul className="mb-4">
-              {selectedCoins.map(coin => (
-                <li key={coin.symbol} className="grid grid-cols-3 gap-2 items-center py-1">
-                  <span>{coin.symbol} ({coin.position})</span>
-                  <span className="text-right">{coin.weight.toFixed(2)}%</span>
-                  <div className="text-center">
+        <Allotment.Pane>
+          <Allotment>
+            {/* Left side: Selected Coins */}
+            <Allotment.Pane>
+              <div className="pr-2 overflow-y-auto h-full">
+                <div className="flex justify-between items-center mb-2 sticky top-0 bg-white">
+                  <h2 className="text-xl font-semibold">Selected Coins</h2>
+                  <div>
                     <button
-                      onClick={() => removeCoin(coin.symbol)}
-                      className="bg-red-500 text-white px-2 py-1 rounded text-sm"
+                      onClick={handleUpdateBasket}
+                      className="bg-green-500 text-white px-3 py-1 rounded text-sm mr-2"
                     >
-                      Remove
+                      Update
+                    </button>
+                    <button
+                      onClick={handleClearBasket}
+                      className="bg-red-500 text-white px-3 py-1 rounded text-sm"
+                    >
+                      Clear
                     </button>
                   </div>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Right side: Chart and Statistics */}
-          <div className="w-1/2 pl-2 overflow-y-auto">
-            <h2 className="text-xl font-semibold mb-2 sticky top-0 bg-white">
-              {selectedCoin ? `${selectedCoin.symbol} Performance` : 'Basket Performance'} {selectedCoin ? '(OHLC)' : '(Close)'}
-            </h2>
-            <div className="mb-4 flex items-center">
-              <label className="mr-2">Resolution:</label>
-              <select
-                value={resolution}
-                onChange={(e) => handleResolutionChange(e.target.value)}
-                className="border px-2 py-1 mr-4"
-              >
-                <option value="1m">1 minute</option>
-                <option value="5m">5 minutes</option>
-                <option value="15m">15 minutes</option>
-                <option value="1h">1 hour</option>
-                <option value="4h">4 hours</option>
-                <option value="1d">1 day</option>
-              </select>
-              <label className="mr-2">
-                <input
-                  type="checkbox"
-                  checked={showComponentLines}
-                  onChange={(e) => setShowComponentLines(e.target.checked)}
-                  className="mr-1"
-                />
-                Show components
-              </label>
-              <label className="ml-4">
-                <input
-                  type="checkbox"
-                  checked={showLongShortLines}
-                  onChange={(e) => setShowLongShortLines(e.target.checked)}
-                  className="mr-1"
-                />
-                Show long/short aggregates
-              </label>
-            </div>
-
-            {!selectedCoin && basketStats && (
-              <div className="mb-4">
-                <div className="grid grid-cols-2 gap-1">
-                  <div>Total Return: {basketStats.totalReturn.toFixed(2)}%</div>
-                  <div>Annualized Volatility: {basketStats.annualizedVolatility.toFixed(2)}%</div>
-                  <div>Sharpe Ratio: {basketStats.sharpeRatio.toFixed(2)}</div>
-                  <div>Max Drawdown: {basketStats.maxDrawdown.toFixed(2)}%</div>
                 </div>
+                <div className="grid grid-cols-3 gap-2 mb-2 font-semibold">
+                  <div>Coin</div>
+                  <div className="text-right">Weight</div>
+                  <div className="text-center">Action</div>
+                </div>
+                <ul className="mb-4">
+                  {selectedCoins.map(coin => (
+                    <li key={coin.symbol} className="grid grid-cols-3 gap-2 items-center py-1">
+                      <span>{coin.symbol} ({coin.position})</span>
+                      <span className="text-right">{coin.weight.toFixed(2)}%</span>
+                      <div className="text-center">
+                        <button
+                          onClick={() => removeCoin(coin.symbol)}
+                          className="bg-red-500 text-white px-2 py-1 rounded text-sm"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
               </div>
-            )}
-            {isLoading ? (
-              <div className="text-center">Loading chart data...</div>
-            ) : (
-              <div ref={chartContainerRef} className="w-full h-64" />
-            )}
-          </div>
-        </div>
+            </Allotment.Pane>
+
+            {/* Right side: Chart and Statistics */}
+            <Allotment.Pane>
+              <div className="pl-2 overflow-y-auto h-full">
+                <h2 className="text-xl font-semibold mb-2 sticky top-0 bg-white">
+                  {selectedCoin ? `${selectedCoin.symbol} Performance` : 'Basket Performance'} {selectedCoin ? '(OHLC)' : '(Close)'}
+                </h2>
+                <div className="mb-4 flex items-center">
+                  <label className="mr-2">Resolution:</label>
+                  <select
+                    value={resolution}
+                    onChange={(e) => handleResolutionChange(e.target.value)}
+                    className="border px-2 py-1 mr-4"
+                  >
+                    <option value="1m">1 minute</option>
+                    <option value="5m">5 minutes</option>
+                    <option value="15m">15 minutes</option>
+                    <option value="1h">1 hour</option>
+                    <option value="4h">4 hours</option>
+                    <option value="1d">1 day</option>
+                  </select>
+                  <label className="mr-2">
+                    <input
+                      type="checkbox"
+                      checked={showComponentLines}
+                      onChange={(e) => setShowComponentLines(e.target.checked)}
+                      className="mr-1"
+                    />
+                    Show components
+                  </label>
+                  <label className="ml-4">
+                    <input
+                      type="checkbox"
+                      checked={showLongShortLines}
+                      onChange={(e) => setShowLongShortLines(e.target.checked)}
+                      className="mr-1"
+                    />
+                    Show long/short aggregates
+                  </label>
+                </div>
+
+                {!selectedCoin && basketStats && (
+                  <div className="mb-4">
+                    <div className="grid grid-cols-2 gap-1">
+                      <div>Total Return: {basketStats.totalReturn.toFixed(2)}%</div>
+                      <div>Annualized Volatility: {basketStats.annualizedVolatility.toFixed(2)}%</div>
+                      <div>Sharpe Ratio: {basketStats.sharpeRatio.toFixed(2)}</div>
+                      <div>Max Drawdown: {basketStats.maxDrawdown.toFixed(2)}%</div>
+                    </div>
+                  </div>
+                )}
+                {isLoading ? (
+                  <div className="text-center">Loading chart data...</div>
+                ) : (
+                  <div ref={chartContainerRef} className="w-full h-64" />
+                )}
+              </div>
+            </Allotment.Pane>
+          </Allotment>
+        </Allotment.Pane>
 
         {/* Bottom half: Available Coins */}
-        <div className="h-1/2 mb-4">
-          <h2 className="text-xl font-semibold mb-2">Available Coins</h2>
-          <div className="overflow-y-auto h-[calc(100%-2rem)]">
-            <table className="w-full table-auto">
-              <thead className="sticky top-0 bg-white">
-                <tr className="bg-gray-200">
-                  <th className="px-2 py-2 cursor-pointer" onClick={() => handleSort('symbol')}>Coin</th>
-                  <th className="px-2 py-2 cursor-pointer" onClick={() => handleSort('price')}>Price</th>
-                  <th className="px-2 py-2 cursor-pointer" onClick={() => handleSort('priceChange')}>24h Change</th>
-                  <th className="px-2 py-2 cursor-pointer" onClick={() => handleSort('volume')}>Volume (USD)</th>
-                  <th className="px-2 py-2 cursor-pointer" onClick={() => handleSort('beta')}>Beta</th>
-                  <th className="px-2 py-2 cursor-pointer" onClick={() => handleSort('category')}>Category</th>
-                  <th className="px-2 py-2 cursor-pointer" onClick={() => handleSort('correlation')}>Correlation</th>
-                  <th className="px-2 py-2 cursor-pointer" onClick={() => handleSort('volatility')}>Volatility</th>
-                  <th className="px-2 py-2">Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {coins.map(coin => (
-                  <tr key={coin.symbol} className="border-b cursor-pointer" onClick={() => handleCoinClick(coin.symbol)}>
-                    <td className="px-2 py-2">{coin.symbol}</td>
-                    <td className="px-2 py-2">${coin.price}</td>
-                    <td className={`px-2 py-2 ${parseFloat(coin.priceChange) >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                      {coin.priceChange}%
-                    </td>
-                    <td className="px-2 py-2">${parseFloat(coin.volume).toLocaleString()}</td>
-                    <td className="px-2 py-2">{coin.beta || 'N/A'}</td>
-                    <td className="px-2 py-2">{coin.category || 'N/A'}</td>
-                    <td className="px-2 py-2">{coin.correlation || 'N/A'}</td>
-                    <td className="px-2 py-2">{coin.volatility || 'N/A'}</td>
-                    <td className="px-2 py-2">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleCoinSelection(coin.symbol, 'long');
-                        }}
-                        className="bg-green-500 text-white px-2 py-1 rounded text-sm mr-2"
-                      >
-                        Long
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleCoinSelection(coin.symbol, 'short');
-                        }}
-                        className="bg-red-500 text-white px-2 py-1 rounded text-sm"
-                      >
-                        Short
-                      </button>
-                    </td>
+        <Allotment.Pane>
+          <div className="mb-4 h-full flex flex-col">
+            <h2 className="text-xl font-semibold mb-2">Available Coins</h2>
+            <div className="overflow-y-auto flex-grow">
+              <table className="w-full table-auto">
+                <thead className="sticky top-0 bg-white">
+                  <tr className="bg-gray-200">
+                    <th className="px-2 py-2 cursor-pointer" onClick={() => handleSort('symbol')}>Coin</th>
+                    <th className="px-2 py-2 cursor-pointer" onClick={() => handleSort('price')}>Price</th>
+                    <th className="px-2 py-2 cursor-pointer" onClick={() => handleSort('priceChange')}>24h Change</th>
+                    <th className="px-2 py-2 cursor-pointer" onClick={() => handleSort('volume')}>Volume (USD)</th>
+                    <th className="px-2 py-2 cursor-pointer" onClick={() => handleSort('beta')}>Beta</th>
+                    <th className="px-2 py-2 cursor-pointer" onClick={() => handleSort('category')}>Category</th>
+                    <th className="px-2 py-2 cursor-pointer" onClick={() => handleSort('correlation')}>Correlation</th>
+                    <th className="px-2 py-2 cursor-pointer" onClick={() => handleSort('volatility')}>Volatility</th>
+                    <th className="px-2 py-2">Action</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {coins.map(coin => (
+                    <tr key={coin.symbol} className="border-b cursor-pointer" onClick={() => handleCoinClick(coin.symbol)}>
+                      <td className="px-2 py-2">{coin.symbol}</td>
+                      <td className="px-2 py-2">${coin.price}</td>
+                      <td className={`px-2 py-2 ${parseFloat(coin.priceChange) >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                        {coin.priceChange}%
+                      </td>
+                      <td className="px-2 py-2">${parseFloat(coin.volume).toLocaleString()}</td>
+                      <td className="px-2 py-2">{coin.beta || 'N/A'}</td>
+                      <td className="px-2 py-2">{coin.category || 'N/A'}</td>
+                      <td className="px-2 py-2">{coin.correlation || 'N/A'}</td>
+                      <td className="px-2 py-2">{coin.volatility || 'N/A'}</td>
+                      <td className="px-2 py-2">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleCoinSelection(coin.symbol, 'long');
+                          }}
+                          className="bg-green-500 text-white px-2 py-1 rounded text-sm mr-2"
+                        >
+                          Long
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleCoinSelection(coin.symbol, 'short');
+                          }}
+                          className="bg-red-500 text-white px-2 py-1 rounded text-sm"
+                        >
+                          Short
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
-
-      </div>
+        </Allotment.Pane>
+      </Allotment>
     </div>
   );
 };
