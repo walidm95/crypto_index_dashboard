@@ -103,20 +103,26 @@ const App = () => {
       });
 
       if (selectedCoin) {
+        const pricePrecision = symbolsInfo[selectedCoin.symbol]?.pricePrecision || 2;
         const candleSeries = chart.addCandlestickSeries({
           upColor: '#26a69a',
           downColor: '#ef5350',
           borderVisible: false,
           wickUpColor: '#26a69a',
           wickDownColor: '#ef5350',
+          priceFormat: {
+            type: 'price',
+            precision: pricePrecision,
+            minMove: 1 / Math.pow(10, pricePrecision),
+          },
         });
 
         candleSeries.setData(selectedCoin.data.map(item => ({
           time: item.time / 1000,
-          open: item.open,
-          high: item.high,
-          low: item.low,
-          close: item.close,
+          open: parseFloat(item.open),
+          high: parseFloat(item.high),
+          low: parseFloat(item.low),
+          close: parseFloat(item.close),
         })));
       } else {
         // Add basket index line
@@ -194,7 +200,7 @@ const App = () => {
         chart.remove();
       };
     }
-  }, [basketData, componentData, selectedCoin, showComponentLines, showLongShortLines, calculateAggregatedLine, selectedCoins]);
+  }, [basketData, componentData, selectedCoin, showComponentLines, showLongShortLines, calculateAggregatedLine, selectedCoins, symbolsInfo]);
 
   const fetchBasketData = useCallback(async () => {
     setIsLoading(true);
@@ -317,7 +323,7 @@ const App = () => {
     try {
       const response = await fetch('https://fapi.binance.com/fapi/v1/exchangeInfo');
       const data = await response.json();
-      
+
       const symbolsInfo = {};
       data.symbols.forEach(symbol => {
         if (symbol.symbol.endsWith('USDT')) {
@@ -341,7 +347,7 @@ const App = () => {
   useEffect(() => {
     const getExchangeInfo = async () => {
       const symbolsInfo = await fetchExchangeInfo();
-      setCoins(prevCoins => 
+      setCoins(prevCoins =>
         prevCoins.map(coin => ({
           ...coin,
           pricePrecision: symbolsInfo[coin.symbol]?.pricePrecision || 2,
@@ -475,6 +481,55 @@ const App = () => {
     setCoins(sortedCoins);
   };
 
+  const handleWeightChange = (symbol, newWeight) => {
+    setSelectedCoins(prev => {
+      const updatedCoins = [...prev];
+      const changedCoin = updatedCoins.find(coin => coin.symbol === symbol);
+      const oldWeight = changedCoin.weight;
+      const newWeightValue = parseFloat(newWeight);
+
+      // Calculate the weight difference
+      const weightDiff = newWeightValue - oldWeight;
+
+      // Separate long and short coins
+      const longCoins = updatedCoins.filter(coin => coin.position === 'long' && coin.symbol !== symbol);
+      const shortCoins = updatedCoins.filter(coin => coin.position === 'short' && coin.symbol !== symbol);
+
+      // Determine which group to adjust
+      const coinsToAdjust = changedCoin.position === 'long' ? shortCoins : longCoins;
+
+      // Calculate the total weight of coins to adjust
+      const totalWeightToAdjust = coinsToAdjust.reduce((sum, coin) => sum + coin.weight, 0);
+
+      if (totalWeightToAdjust > 0) {
+        // Adjust weights proportionally
+        coinsToAdjust.forEach(coin => {
+          const proportion = coin.weight / totalWeightToAdjust;
+          coin.weight = Math.max(0, coin.weight - (weightDiff * proportion));
+        });
+      }
+
+      // Update the changed coin's weight
+      changedCoin.weight = newWeightValue;
+
+      // Ensure the total is exactly 100%
+      const totalWeight = updatedCoins.reduce((sum, coin) => sum + coin.weight, 0);
+      if (totalWeight !== 100) {
+        const adjustment = (100 - totalWeight) / updatedCoins.length;
+        updatedCoins.forEach(coin => {
+          coin.weight = Math.max(0, coin.weight + adjustment);
+        });
+      }
+
+      // Round weights to two decimal places
+      updatedCoins.forEach(coin => {
+        coin.weight = parseFloat(coin.weight.toFixed(2));
+      });
+
+      return updatedCoins;
+    });
+  };
+
   return (
     <div className="container mx-auto p-4 max-w-7xl flex flex-col h-screen overflow-y-auto">
       <h1 className="text-2xl font-bold mb-4">Custom Index Builder</h1>
@@ -507,14 +562,22 @@ const App = () => {
                 </div>
                 <div className="grid grid-cols-3 gap-2 mb-2 font-semibold">
                   <div>Coin</div>
-                  <div className="text-right">Weight</div>
+                  <div className="text-right">Weight (%)</div>
                   <div className="text-center">Action</div>
                 </div>
                 <ul className="mb-4">
                   {selectedCoins.map(coin => (
                     <li key={coin.symbol} className="grid grid-cols-3 gap-2 items-center py-1">
                       <span>{coin.symbol} ({coin.position})</span>
-                      <span className="text-right">{coin.weight.toFixed(2)}%</span>
+                      <input
+                        type="number"
+                        value={coin.weight}
+                        onChange={(e) => handleWeightChange(coin.symbol, e.target.value)}
+                        className="border px-2 py-1 w-full text-right"
+                        step="0.01"
+                        min="0"
+                        max="100"
+                      />
                       <div className="text-center">
                         <button
                           onClick={() => removeCoin(coin.symbol)}
