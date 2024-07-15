@@ -20,12 +20,35 @@ const App = () => {
   const [showComponentLines, setShowComponentLines] = useState(true);
   const [showLongShortLines, setShowLongShortLines] = useState(false);
   const [sortConfig, setSortConfig] = useState({ key: 'volume', direction: 'descending' });
+  const [symbolsInfo, setSymbolsInfo] = useState({});
   const chartContainerRef = useRef();
   const chartRef = useRef();
 
+  const fetchCoinsData = useCallback(async () => {
+    try {
+      const tickerResponse = await fetch('https://fapi.binance.com/fapi/v1/ticker/24hr');
+      const tickerData = await tickerResponse.json();
+
+      const usdtCoins = tickerData.filter(coin => coin.symbol.endsWith('USDT'));
+      const sortedCoins = usdtCoins.sort((a, b) => parseFloat(b.volume * b.lastPrice) - parseFloat(a.volume * a.lastPrice));
+
+      setCoins(sortedCoins.map(coin => ({
+        symbol: coin.symbol,
+        price: parseFloat(coin.lastPrice).toFixed(symbolsInfo[coin.symbol]?.pricePrecision || 2),
+        priceChange: parseFloat(coin.priceChangePercent).toFixed(2),
+        volume: parseFloat(coin.volume * coin.lastPrice).toFixed(2),
+        weight: 0,
+        position: null
+      })));
+    } catch (error) {
+      console.error('Error fetching coins data:', error);
+      setError('Failed to fetch coins data. Please try again later.');
+    }
+  }, [symbolsInfo]); // Add symbolsInfo as a dependency
+
   useEffect(() => {
     fetchCoinsData();
-  }, []);
+  }, [fetchCoinsData]); // Add fetchCoinsData to the dependency array
 
   const calculateAggregatedLine = useCallback((position) => {
     const relevantComponents = componentData.filter(component =>
@@ -303,6 +326,7 @@ const App = () => {
         }
       });
 
+      setSymbolsInfo(symbolsInfo);
       return symbolsInfo;
     } catch (error) {
       console.error('Error fetching exchange info:', error);
@@ -326,30 +350,6 @@ const App = () => {
 
     getExchangeInfo();
   }, [fetchExchangeInfo]);
-
-
-  
-  const fetchCoinsData = async () => {
-    try {
-      const tickerResponse = await fetch('https://fapi.binance.com/fapi/v1/ticker/24hr');
-      const tickerData = await tickerResponse.json();
-
-      const usdtCoins = tickerData.filter(coin => coin.symbol.endsWith('USDT'));
-      const sortedCoins = usdtCoins.sort((a, b) => parseFloat(b.volume * b.lastPrice) - parseFloat(a.volume * a.lastPrice));
-
-      setCoins(sortedCoins.map(coin => ({
-        symbol: coin.symbol,
-        price: parseFloat(coin.lastPrice).toFixed(2),
-        priceChange: parseFloat(coin.priceChangePercent).toFixed(2),
-        volume: parseFloat(coin.volume * coin.lastPrice).toFixed(2),
-        weight: 0,
-        position: null
-      })));
-    } catch (error) {
-      console.error('Error fetching coins data:', error);
-      setError('Failed to fetch coins data. Please try again later.');
-    }
-  };
 
   const handleCoinSelection = (symbol, position) => {
     setSelectedCoins(prev => {
