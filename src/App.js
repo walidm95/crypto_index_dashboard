@@ -377,22 +377,27 @@ const App = () => {
     if (!coins || coins.length === 0) {
       return [];
     }
-
+  
     const longCoins = coins.filter(coin => coin && coin.position === 'long');
     const shortCoins = coins.filter(coin => coin && coin.position === 'short');
-
-    const longWeight = longCoins.length > 0 ? 50 / longCoins.length : 0;
-    const shortWeight = shortCoins.length > 0 ? 50 / shortCoins.length : 0;
-
-    const adjustedCoins = coins.map(coin => {
-      if (!coin) return null;
-      return {
+  
+    // If all coins are on the same side, distribute weights equally
+    if (longCoins.length === 0 || shortCoins.length === 0) {
+      const weight = 100 / coins.length;
+      return coins.map(coin => ({
         ...coin,
-        weight: coin.position === 'long' ? longWeight : (coin.position === 'short' ? shortWeight : 0)
-      };
-    }).filter(Boolean);
-
-    return adjustedCoins;
+        weight: weight
+      }));
+    }
+  
+    // If there's a mix of long and short positions, maintain the 50/50 split
+    const longWeight = 50 / longCoins.length;
+    const shortWeight = 50 / shortCoins.length;
+  
+    return coins.map(coin => ({
+      ...coin,
+      weight: coin.position === 'long' ? longWeight : shortWeight
+    }));
   };
 
   const removeCoin = (symbol) => {
@@ -487,31 +492,24 @@ const App = () => {
       const changedCoin = updatedCoins.find(coin => coin.symbol === symbol);
       const oldWeight = changedCoin.weight;
       const newWeightValue = parseFloat(newWeight);
-
+  
       // Calculate the weight difference
       const weightDiff = newWeightValue - oldWeight;
-
-      // Separate long and short coins
-      const longCoins = updatedCoins.filter(coin => coin.position === 'long' && coin.symbol !== symbol);
-      const shortCoins = updatedCoins.filter(coin => coin.position === 'short' && coin.symbol !== symbol);
-
-      // Determine which group to adjust
-      const coinsToAdjust = changedCoin.position === 'long' ? shortCoins : longCoins;
-
-      // Calculate the total weight of coins to adjust
-      const totalWeightToAdjust = coinsToAdjust.reduce((sum, coin) => sum + coin.weight, 0);
-
-      if (totalWeightToAdjust > 0) {
-        // Adjust weights proportionally
-        coinsToAdjust.forEach(coin => {
-          const proportion = coin.weight / totalWeightToAdjust;
+  
+      // Update the changed coin's weight
+      changedCoin.weight = newWeightValue;
+  
+      // Adjust other coins' weights proportionally
+      const otherCoins = updatedCoins.filter(coin => coin.symbol !== symbol);
+      const totalOtherWeight = otherCoins.reduce((sum, coin) => sum + coin.weight, 0);
+  
+      if (totalOtherWeight > 0) {
+        otherCoins.forEach(coin => {
+          const proportion = coin.weight / totalOtherWeight;
           coin.weight = Math.max(0, coin.weight - (weightDiff * proportion));
         });
       }
-
-      // Update the changed coin's weight
-      changedCoin.weight = newWeightValue;
-
+  
       // Ensure the total is exactly 100%
       const totalWeight = updatedCoins.reduce((sum, coin) => sum + coin.weight, 0);
       if (totalWeight !== 100) {
@@ -520,12 +518,12 @@ const App = () => {
           coin.weight = Math.max(0, coin.weight + adjustment);
         });
       }
-
+  
       // Round weights to two decimal places
       updatedCoins.forEach(coin => {
         coin.weight = parseFloat(coin.weight.toFixed(2));
       });
-
+  
       return updatedCoins;
     });
   };
