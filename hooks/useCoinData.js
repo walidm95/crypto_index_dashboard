@@ -11,7 +11,10 @@ const useCoinsData = () => {
             const tickerResponse = await fetch('https://fapi.binance.com/fapi/v1/ticker/24hr');
             const tickerData = await tickerResponse.json();
 
-            const usdtCoins = tickerData.filter(coin => coin.symbol.endsWith('USDT'));
+            const usdtCoins = tickerData.filter(coin => coin.symbol.endsWith('USDT')).map(coin => ({
+                ...coin,
+                symbol: coin.symbol.replace('USDT', '')
+            }));
             const sortedCoins = usdtCoins.sort((a, b) => parseFloat(b.volume * b.lastPrice) - parseFloat(a.volume * a.lastPrice));
 
             setCoins(sortedCoins.map(coin => ({

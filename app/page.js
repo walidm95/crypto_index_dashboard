@@ -1,8 +1,7 @@
 "use client";
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
-import { Resizable } from 're-resizable';
 import SelectedCoins from '@/components/SelectedCoins';
 import BasketChart from '@/components/BasketChart';
 import AvailableCoins from '@/components/AvailableCoins';
@@ -13,19 +12,21 @@ import { adjustWeights, updateCoinWeight } from '@/lib/weightUtils';
 const App = () => {
   const [selectedCoins, setSelectedCoins] = useState([]);
   const [resolution, setResolution] = useState('1h');
-  const [selectedCoin, setSelectedCoin] = useState(null);
+  const [selectedCoin, setSelectedCoin] = useState({ symbol: 'BTC', data: [] });
   const [showComponentLines, setShowComponentLines] = useState(false);
   const [showLongShortLines, setShowLongShortLines] = useState(false);
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'ascending' });
 
   const { coins, setCoins, error: coinsError } = useCoinsData();
-  const { 
-    basketData, 
-    componentData, 
-    basketStats, 
-    isLoading, 
+  const {
+    basketData,
+    componentData,
+    basketStats,
+    isLoading,
     error: basketError,
-    fetchBasketData
+    fetchBasketData,
+    fetchCoinData,
+    refreshData
   } = useBasketData(selectedCoins, resolution);
 
   const handleCoinSelection = useCallback((symbol, position) => {
@@ -64,9 +65,10 @@ const App = () => {
     setResolution(newResolution);
   }, []);
 
-  const handleCoinClick = useCallback((symbol) => {
-    setSelectedCoin(symbol);
-  }, []);
+  const handleCoinClick = useCallback(async (coin) => {
+    const data = await fetchCoinData(coin.symbol, resolution);
+    setSelectedCoin({ symbol: coin.symbol, data });
+  }, [resolution, fetchCoinData]);
 
   const handleSort = useCallback((key) => {
     let direction = 'ascending';
@@ -100,47 +102,43 @@ const App = () => {
     setCoins(sortedCoins);
   }, [coins, sortConfig]);
 
+  useEffect(() => {
+    if (selectedCoins.length > 0) {
+      fetchBasketData();
+    }
+  }, [resolution, selectedCoins, fetchBasketData]);
+
+  useEffect(() => {
+    if (selectedCoin.symbol !== 'BTC' && selectedCoin.data.length === 0) {
+      handleCoinClick({ symbol: selectedCoin.symbol });
+    }
+  }, [selectedCoin.symbol, handleCoinClick]);
+
   return (
     <div className="min-h-screen bg-blue-50 p-8">
       <h1 className="text-4xl font-bold mb-8 text-blue-900">Crypto Spread Instrument Builder</h1>
-      
+
       {(coinsError || basketError) && (
         <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6" role="alert">
           <p>{coinsError || basketError}</p>
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <Resizable
-          defaultSize={{
-            width: '100%',
-            height: 400,
-          }}
-          minHeight={400}
-          maxHeight={800}
-        >
-          <Card className="h-full">
-            <CardContent className="p-4 h-full overflow-hidden">
-              <AvailableCoins
-                coins={coins}
-                onCoinSelection={handleCoinSelection}
-                onCoinClick={handleCoinClick}
-                onSort={handleSort}
-                sortConfig={sortConfig}
-              />
-            </CardContent>
-          </Card>
-        </Resizable>
-        <Resizable
-          defaultSize={{
-            width: '100%',
-            height: 400,
-          }}
-          minHeight={400}
-          maxHeight={800}
-        >
-          <Card className="h-full">
-            <CardContent className="p-4 h-full overflow-hidden">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 h-[calc(100vh-200px)] max-h-[800px]">
+        <Card className="h-full overflow-hidden">
+          <CardContent className="p-4 h-full overflow-auto">
+            <AvailableCoins
+              coins={coins}
+              onCoinSelection={handleCoinSelection}
+              onCoinClick={handleCoinClick}
+              onSort={handleSort}
+              sortConfig={sortConfig}
+            />
+          </CardContent>
+        </Card>
+        <Card className="h-full flex flex-col overflow-hidden md:col-span-2">
+          <CardContent className="p-4 flex-grow flex flex-col overflow-hidden">
+            <div className="mb-4 flex-shrink-0 overflow-auto">
               <SelectedCoins
                 selectedCoins={selectedCoins}
                 onUpdateBasket={handleUpdateBasket}
@@ -148,20 +146,8 @@ const App = () => {
                 onRemoveCoin={handleRemoveCoin}
                 onWeightChange={handleWeightChange}
               />
-            </CardContent>
-          </Card>
-        </Resizable>
-      </div>
-      <div className="mt-8">
-        <Resizable
-          defaultSize={{
-            width: '100%',
-            height: 'auto',
-          }}
-          minHeight="500px"
-        >
-          <Card>
-            <CardContent className="p-4 h-full">
+            </div>
+            <div className="flex-grow overflow-hidden">
               <BasketChart
                 basketData={basketData}
                 componentData={componentData}
@@ -176,9 +162,9 @@ const App = () => {
                 setShowLongShortLines={setShowLongShortLines}
                 symbolsInfo={coins.reduce((acc, coin) => ({ ...acc, [coin.symbol]: coin }), {})}
               />
-            </CardContent>
-          </Card>
-        </Resizable>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

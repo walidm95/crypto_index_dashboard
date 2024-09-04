@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 
 const useBasketData = (selectedCoins, resolution) => {
     const [basketData, setBasketData] = useState([]);
@@ -12,6 +12,29 @@ const useBasketData = (selectedCoins, resolution) => {
     });
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState(null);
+
+    const fetchCoinData = async (symbol, resolution) => {
+        const url = `https://fapi.binance.com/fapi/v1/klines?symbol=${symbol}USDT&interval=${resolution}&limit=500`;
+        try {
+            const response = await fetch(url);
+            const data = await response.json();
+            
+            if (data.code && data.msg) {
+                throw new Error(`API Error: ${data.msg}`);
+            }
+            
+            return data.map(candle => ({
+                time: candle[0],
+                open: parseFloat(candle[1]),
+                high: parseFloat(candle[2]),
+                low: parseFloat(candle[3]),
+                close: parseFloat(candle[4])
+            }));
+        } catch (error) {
+            console.error(`Error fetching data for ${symbol}: ${error.message}`);
+            return [];
+        }
+    };
 
     const fetchBasketData = useCallback(async () => {
         setIsLoading(true);
@@ -96,8 +119,9 @@ const useBasketData = (selectedCoins, resolution) => {
         }
     }, [selectedCoins, resolution]);
 
-    useEffect(() => {
-        if (selectedCoins.length > 0) {
+    // Add a new function to manually trigger data fetching
+    const refreshData = useCallback(() => {
+        if (selectedCoins && selectedCoins.length > 0) {
             fetchBasketData();
         } else {
             setBasketData([]);
@@ -110,9 +134,9 @@ const useBasketData = (selectedCoins, resolution) => {
                 individualReturns: []
             });
         }
-    }, [selectedCoins, resolution, fetchBasketData]);
+    }, [selectedCoins, fetchBasketData]);
 
-    return { basketData, componentData, basketStats, isLoading, error, fetchBasketData };
+    return { basketData, componentData, basketStats, isLoading, error, fetchBasketData, fetchCoinData, refreshData };
 };
 
 const getPeriodMultiplier = (resolution) => {
