@@ -61,7 +61,7 @@ const useBasketData = (selectedCoins, resolution) => {
             });
 
             for (let i = 0; i < minLength; i++) {
-                const time = coinsData[0].data[i][0];
+                const time = coinsData[0].data[i][0] / 1000;
 
                 let basketValue = 0;
 
@@ -119,24 +119,7 @@ const useBasketData = (selectedCoins, resolution) => {
         }
     }, [selectedCoins, resolution]);
 
-    // Add a new function to manually trigger data fetching
-    const refreshData = useCallback(() => {
-        if (selectedCoins && selectedCoins.length > 0) {
-            fetchBasketData();
-        } else {
-            setBasketData([]);
-            setComponentData([]);
-            setBasketStats({
-                totalReturn: 0,
-                sharpeRatio: 0,
-                maxDrawdown: 0,
-                annualizedVolatility: 0,
-                individualReturns: []
-            });
-        }
-    }, [selectedCoins, fetchBasketData]);
-
-    return { basketData, componentData, basketStats, isLoading, error, fetchBasketData, fetchCoinData, refreshData };
+    return { basketData, componentData, basketStats, isLoading, error, fetchBasketData, fetchCoinData };
 };
 
 const getPeriodMultiplier = (resolution) => {

@@ -1,9 +1,7 @@
 import { createChart, ColorType, PriceScaleMode } from 'lightweight-charts';
 
-export const createChartInstance = (container, width, height, selectedCoin = null) => {
+export const createChartInstance = (container, usePercentage = true) => {
   return createChart(container, {
-    width: width,
-    height: height,
     layout: {
       background: { type: ColorType.Solid, color: 'white' },
       textColor: 'black',
@@ -18,10 +16,17 @@ export const createChartInstance = (container, width, height, selectedCoin = nul
     },
     rightPriceScale: {
       borderVisible: false,
-      mode: selectedCoin ? PriceScaleMode.Normal : PriceScaleMode.Percentage,
+      mode: usePercentage ? PriceScaleMode.Percentage : PriceScaleMode.Normal,
     },
   });
 };
+
+export function convertToLocalTime(data) {
+  return data.map(item => ({
+    ...item,
+    time: new Date(item.time * 1000).getTime() / 1000
+  }));
+}
 
 export const addCandlestickSeries = (chart, data, pricePrecision) => {
   const candleSeries = chart.addCandlestickSeries({

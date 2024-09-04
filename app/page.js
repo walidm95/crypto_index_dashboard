@@ -5,7 +5,7 @@ import BasketChart from '@/components/BasketChart';
 import AvailableCoins from '@/components/AvailableCoins';
 import useCoinsData from '@/hooks/useCoinData'
 import useBasketData from '@/hooks/useBasketData';
-import SpreadConfigModal from '@/components/SpreadConfigModal';
+import BasketConfigModal from '@/components/BasketConfigModal';
 
 const App = () => {
   const [selectedCoins, setSelectedCoins] = useState([]);
@@ -13,8 +13,10 @@ const App = () => {
   const [showComponentLines, setShowComponentLines] = useState(false);
   const [showLongShortLines, setShowLongShortLines] = useState(false);
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'ascending' });
-  const [isSpreadModalOpen, setIsSpreadModalOpen] = useState(false);
+  const [isBasketModalOpen, setIsBasketModalOpen] = useState(false);
   const [tempSelectedCoins, setTempSelectedCoins] = useState([]);
+  const [confirmedSelectedCoins, setConfirmedSelectedCoins] = useState([]);
+  const [basketCreated, setBasketCreated] = useState(false);
 
   const { coins, setCoins, error: coinsError } = useCoinsData();
   const {
@@ -41,17 +43,19 @@ const App = () => {
     setTempSelectedCoins(prevCoins => prevCoins.filter(coin => coin.symbol !== symbol));
   }, []);
 
-  const handleCreateSpread = useCallback(() => {
-    setIsSpreadModalOpen(true);
+  const handleCreateBasket = useCallback(() => {
+    setIsBasketModalOpen(true);
   }, []);
 
-  const handleConfirmSpread = useCallback((configuredCoins) => {
+  const handleConfirmBasket = useCallback((configuredCoins) => {
+    setConfirmedSelectedCoins(configuredCoins);
     setSelectedCoins(configuredCoins);
-    setIsSpreadModalOpen(false);
+    setIsBasketModalOpen(false);
+    setBasketCreated(true);
   }, []);
 
-  const handleCloseSpreadModal = useCallback(() => {
-    setIsSpreadModalOpen(false);
+  const handleCloseBasketModal = useCallback(() => {
+    setIsBasketModalOpen(false);
   }, []);
 
   const handleUpdateCoin = useCallback((index, updatedCoin) => {
@@ -98,20 +102,22 @@ const App = () => {
     setCoins(sortedCoins);
   }, [coins, sortConfig]);
 
-  const handleResetSpread = useCallback(() => {
+  const handleResetBasket = useCallback(() => {
     setSelectedCoins([]);
     setTempSelectedCoins([]);
+    setConfirmedSelectedCoins([]);
+    setBasketCreated(false);
   }, []);
 
   useEffect(() => {
-    if (selectedCoins.length > 0) {
+    if (confirmedSelectedCoins.length > 0) {
       fetchBasketData();
     }
-  }, [resolution, selectedCoins, fetchBasketData]);
+  }, [resolution, confirmedSelectedCoins, fetchBasketData]);
 
   return (
     <div className="min-h-screen bg-blue-50 p-8">
-      <h1 className="text-4xl font-bold mb-8 text-blue-900">Crypto Spread Instrument Builder</h1>
+      <h1 className="text-4xl font-bold mb-8 text-blue-900">Basket Builder</h1>
 
       {(coinsError || basketError) && (
         <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6" role="alert">
@@ -127,13 +133,16 @@ const App = () => {
             onSort={handleSort}
             sortConfig={sortConfig}
             selectedCoins={tempSelectedCoins}
+            confirmedSelectedCoins={confirmedSelectedCoins}
             onRemoveCoin={handleRemoveCoin}
-            onCreateSpread={handleCreateSpread}
+            onCreateBasket={handleCreateBasket}
+            basketCreated={basketCreated}
+            onResetBasket={handleResetBasket}
           />
         </div>
         <div className="h-full md:col-span-2">
           <BasketChart
-            selectedCoins={selectedCoins}
+            selectedCoins={confirmedSelectedCoins}
             resolution={resolution}
             onResolutionChange={handleResolutionChange}
             showComponentLines={showComponentLines}
@@ -141,18 +150,21 @@ const App = () => {
             showLongShortLines={showLongShortLines}
             setShowLongShortLines={setShowLongShortLines}
             symbolsInfo={coins.reduce((acc, coin) => ({ ...acc, [coin.symbol]: coin }), {})}
-            onEditSpread={() => setIsSpreadModalOpen(true)}
-            onResetSpread={handleResetSpread}
+            onEditBasket={() => setIsBasketModalOpen(true)}
+            onResetBasket={handleResetBasket}
+            basketData={basketData}
+            componentData={componentData}
+            basketStats={basketStats}
+            isLoading={isLoading}
+            error={basketError}
           />
         </div>
       </div>
-      <SpreadConfigModal
-        isOpen={isSpreadModalOpen}
-        onClose={handleCloseSpreadModal}
+      <BasketConfigModal
+        isOpen={isBasketModalOpen}
+        onClose={handleCloseBasketModal}
         selectedCoins={tempSelectedCoins}
-        onConfirm={handleConfirmSpread}
-        onRemoveCoin={handleRemoveCoin}
-        onUpdateCoin={handleUpdateCoin}
+        onConfirm={handleConfirmBasket}
       />
     </div>
   );
