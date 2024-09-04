@@ -1,21 +1,20 @@
 "use client";
 
 import React, { useState, useCallback, useEffect } from 'react';
-import { Card, CardContent } from "@/components/ui/card";
-import SelectedCoins from '@/components/SelectedCoins';
 import BasketChart from '@/components/BasketChart';
 import AvailableCoins from '@/components/AvailableCoins';
 import useCoinsData from '@/hooks/useCoinData'
 import useBasketData from '@/hooks/useBasketData';
-import { adjustWeights, updateCoinWeight } from '@/lib/weightUtils';
+import SpreadConfigModal from '@/components/SpreadConfigModal';
 
 const App = () => {
   const [selectedCoins, setSelectedCoins] = useState([]);
   const [resolution, setResolution] = useState('1h');
-  const [selectedCoin, setSelectedCoin] = useState({ symbol: 'BTC', data: [] });
   const [showComponentLines, setShowComponentLines] = useState(false);
   const [showLongShortLines, setShowLongShortLines] = useState(false);
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'ascending' });
+  const [isSpreadModalOpen, setIsSpreadModalOpen] = useState(false);
+  const [tempSelectedCoins, setTempSelectedCoins] = useState([]);
 
   const { coins, setCoins, error: coinsError } = useCoinsData();
   const {
@@ -25,50 +24,47 @@ const App = () => {
     isLoading,
     error: basketError,
     fetchBasketData,
-    fetchCoinData,
-    refreshData
   } = useBasketData(selectedCoins, resolution);
 
-  const handleCoinSelection = useCallback((symbol, position) => {
-    setSelectedCoins(prevCoins => {
+  const handleCoinSelection = useCallback((symbol) => {
+    setTempSelectedCoins(prevCoins => {
       const index = prevCoins.findIndex(coin => coin.symbol === symbol);
       if (index !== -1) {
-        const updatedCoins = prevCoins.filter(coin => coin.symbol !== symbol);
-        return adjustWeights(updatedCoins);
+        return prevCoins.filter(coin => coin.symbol !== symbol);
       } else {
-        const updatedCoins = [...prevCoins, { symbol, weight: 0, position }];
-        return adjustWeights(updatedCoins);
+        return [...prevCoins, { symbol, weight: 0, position: 'long' }];
       }
     });
   }, []);
 
-  const handleUpdateBasket = useCallback(() => {
-    fetchBasketData();
-  }, [fetchBasketData]);
-
-  const handleClearBasket = useCallback(() => {
-    setSelectedCoins([]);
-  }, []);
-
   const handleRemoveCoin = useCallback((symbol) => {
-    setSelectedCoins(prevCoins => {
-      const newCoins = prevCoins.filter(coin => coin.symbol !== symbol);
-      return adjustWeights(newCoins);
-    });
+    setTempSelectedCoins(prevCoins => prevCoins.filter(coin => coin.symbol !== symbol));
   }, []);
 
-  const handleWeightChange = useCallback((symbol, newWeight) => {
-    setSelectedCoins(prevCoins => updateCoinWeight(prevCoins, symbol, newWeight));
+  const handleCreateSpread = useCallback(() => {
+    setIsSpreadModalOpen(true);
+  }, []);
+
+  const handleConfirmSpread = useCallback((configuredCoins) => {
+    setSelectedCoins(configuredCoins);
+    setIsSpreadModalOpen(false);
+  }, []);
+
+  const handleCloseSpreadModal = useCallback(() => {
+    setIsSpreadModalOpen(false);
+  }, []);
+
+  const handleUpdateCoin = useCallback((index, updatedCoin) => {
+    setTempSelectedCoins(prevCoins => {
+      const newCoins = [...prevCoins];
+      newCoins[index] = updatedCoin;
+      return newCoins;
+    });
   }, []);
 
   const handleResolutionChange = useCallback((newResolution) => {
     setResolution(newResolution);
   }, []);
-
-  const handleCoinClick = useCallback(async (coin) => {
-    const data = await fetchCoinData(coin.symbol, resolution);
-    setSelectedCoin({ symbol: coin.symbol, data });
-  }, [resolution, fetchCoinData]);
 
   const handleSort = useCallback((key) => {
     let direction = 'ascending';
@@ -102,17 +98,16 @@ const App = () => {
     setCoins(sortedCoins);
   }, [coins, sortConfig]);
 
+  const handleResetSpread = useCallback(() => {
+    setSelectedCoins([]);
+    setTempSelectedCoins([]);
+  }, []);
+
   useEffect(() => {
     if (selectedCoins.length > 0) {
       fetchBasketData();
     }
   }, [resolution, selectedCoins, fetchBasketData]);
-
-  useEffect(() => {
-    if (selectedCoin.symbol !== 'BTC' && selectedCoin.data.length === 0) {
-      handleCoinClick({ symbol: selectedCoin.symbol });
-    }
-  }, [selectedCoin.symbol, handleCoinClick]);
 
   return (
     <div className="min-h-screen bg-blue-50 p-8">
@@ -124,48 +119,41 @@ const App = () => {
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 h-[calc(100vh-200px)] max-h-[800px]">
-        <Card className="h-full overflow-hidden">
-          <CardContent className="p-4 h-full overflow-auto">
-            <AvailableCoins
-              coins={coins}
-              onCoinSelection={handleCoinSelection}
-              onCoinClick={handleCoinClick}
-              onSort={handleSort}
-              sortConfig={sortConfig}
-            />
-          </CardContent>
-        </Card>
-        <Card className="h-full flex flex-col overflow-hidden md:col-span-2">
-          <CardContent className="p-4 flex-grow flex flex-col overflow-hidden">
-            <div className="mb-4 flex-shrink-0 overflow-auto">
-              <SelectedCoins
-                selectedCoins={selectedCoins}
-                onUpdateBasket={handleUpdateBasket}
-                onClearBasket={handleClearBasket}
-                onRemoveCoin={handleRemoveCoin}
-                onWeightChange={handleWeightChange}
-              />
-            </div>
-            <div className="flex-grow overflow-hidden">
-              <BasketChart
-                basketData={basketData}
-                componentData={componentData}
-                selectedCoin={selectedCoin}
-                resolution={resolution}
-                onResolutionChange={handleResolutionChange}
-                basketStats={basketStats}
-                isLoading={isLoading}
-                showComponentLines={showComponentLines}
-                setShowComponentLines={setShowComponentLines}
-                showLongShortLines={showLongShortLines}
-                setShowLongShortLines={setShowLongShortLines}
-                symbolsInfo={coins.reduce((acc, coin) => ({ ...acc, [coin.symbol]: coin }), {})}
-              />
-            </div>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 h-[calc(100vh-150px)] max-h-[900px]">
+        <div className="h-full overflow-hidden">
+          <AvailableCoins
+            coins={coins}
+            onCoinSelection={handleCoinSelection}
+            onSort={handleSort}
+            sortConfig={sortConfig}
+            selectedCoins={tempSelectedCoins}
+            onRemoveCoin={handleRemoveCoin}
+            onCreateSpread={handleCreateSpread}
+          />
+        </div>
+        <div className="h-full md:col-span-2">
+          <BasketChart
+            selectedCoins={selectedCoins}
+            resolution={resolution}
+            onResolutionChange={handleResolutionChange}
+            showComponentLines={showComponentLines}
+            setShowComponentLines={setShowComponentLines}
+            showLongShortLines={showLongShortLines}
+            setShowLongShortLines={setShowLongShortLines}
+            symbolsInfo={coins.reduce((acc, coin) => ({ ...acc, [coin.symbol]: coin }), {})}
+            onEditSpread={() => setIsSpreadModalOpen(true)}
+            onResetSpread={handleResetSpread}
+          />
+        </div>
       </div>
+      <SpreadConfigModal
+        isOpen={isSpreadModalOpen}
+        onClose={handleCloseSpreadModal}
+        selectedCoins={tempSelectedCoins}
+        onConfirm={handleConfirmSpread}
+        onRemoveCoin={handleRemoveCoin}
+        onUpdateCoin={handleUpdateCoin}
+      />
     </div>
   );
 }

@@ -16,7 +16,9 @@ const BasketChart = ({
   setShowComponentLines,
   showLongShortLines,
   setShowLongShortLines,
-  symbolsInfo
+  symbolsInfo,
+  onEditSpread,
+  onResetSpread
 }) => {
   const chartContainerRef = useRef();
   const chartRef = useRef();
@@ -68,8 +70,12 @@ const BasketChart = ({
 
   return (
     <Card className="h-full flex flex-col">
-      <CardHeader>
+      <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="text-xl font-semibold text-blue-900">{getChartTitle()}</CardTitle>
+        <div className="flex space-x-2">
+          <Button onClick={onEditSpread}>Edit</Button>
+          <Button onClick={onResetSpread} variant="outline">Reset</Button>
+        </div>
       </CardHeader>
       <CardContent className="flex-grow flex flex-col">
         <div className="flex flex-wrap gap-4 mb-4">
@@ -104,7 +110,7 @@ const BasketChart = ({
             />
             <Label htmlFor="show-aggregates">Show Long/Short Aggregates</Label>
           </div>
-          <Button onClick={refreshData}>Refresh Data</Button>
+          {/* <Button onClick={refreshData}>Refresh Data</Button> */}
         </div>
         <div className="flex-grow relative">
           {isLoading ? (
