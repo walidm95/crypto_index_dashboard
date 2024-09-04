@@ -12,7 +12,8 @@ const AvailableCoins = ({
   coins, 
   onCoinSelection, 
   onRemoveCoin, 
-  onCreateBasket, 
+  onCreateBasket,
+  onEditBasket,
   onResetBasket, 
   basketCreated,
   confirmedSelectedCoins
@@ -53,10 +54,7 @@ const AvailableCoins = ({
 
   return (
     <Card className="h-full flex flex-col">
-      <CardHeader className="sticky flex-row items-center justify-between">
-        <CardTitle className="text-xl font-semibold text-blue-900">Available Coins</CardTitle>
-      </CardHeader>
-      <CardContent className="p-0 flex-grow overflow-auto">
+      <CardContent className="px-0 py-2 flex-grow overflow-auto">
         <div className="sticky top-0 z-10 bg-white px-4 py-2">
           <div className="relative mb-2">
             <Input
@@ -83,6 +81,7 @@ const AvailableCoins = ({
           selectedCoins={selectedCoins}
           onRemoveCoin={handleRemoveCoin}
           onCreateBasket={onCreateBasket}
+          onEditBasket={onEditBasket}
           onResetBasket={handleResetBasket}
           basketCreated={basketCreated}
         />

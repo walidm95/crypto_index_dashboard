@@ -47,6 +47,16 @@ const App = () => {
     setIsBasketModalOpen(true);
   }, []);
 
+  const handleEditBasket = useCallback(() => {
+    const coinsToEdit = confirmedSelectedCoins.length > 0 ? confirmedSelectedCoins : selectedCoins;
+    setTempSelectedCoins(coinsToEdit.map(coin => ({
+      ...coin,
+      weight: coin.weight || 0,
+      position: coin.position || 'long'
+    })));
+    setIsBasketModalOpen(true);
+  }, [confirmedSelectedCoins, selectedCoins]);
+
   const handleConfirmBasket = useCallback((configuredCoins) => {
     setConfirmedSelectedCoins(configuredCoins);
     setSelectedCoins(configuredCoins);
@@ -109,6 +119,12 @@ const App = () => {
     setBasketCreated(false);
   }, []);
 
+  const handleLoadBasket = useCallback((basket) => {
+    setConfirmedSelectedCoins(basket.coins);
+    setSelectedCoins(basket.coins);
+    setBasketCreated(true);
+  }, []);
+
   useEffect(() => {
     if (confirmedSelectedCoins.length > 0) {
       fetchBasketData();
@@ -136,6 +152,7 @@ const App = () => {
             confirmedSelectedCoins={confirmedSelectedCoins}
             onRemoveCoin={handleRemoveCoin}
             onCreateBasket={handleCreateBasket}
+            onEditBasket={handleEditBasket}
             basketCreated={basketCreated}
             onResetBasket={handleResetBasket}
           />
@@ -157,6 +174,7 @@ const App = () => {
             basketStats={basketStats}
             isLoading={isLoading}
             error={basketError}
+            onLoadBasket={handleLoadBasket}
           />
         </div>
       </div>

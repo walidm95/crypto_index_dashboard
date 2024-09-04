@@ -3,7 +3,7 @@ import { CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { X } from 'lucide-react';
 
-const SelectedCoinsFooter = React.memo(({ selectedCoins, onRemoveCoin, onCreateBasket, onResetBasket, basketCreated }) => {
+const SelectedCoinsFooter = React.memo(({ selectedCoins, onRemoveCoin, onCreateBasket, onEditBasket, onResetBasket, basketCreated }) => {
   return (
     <CardFooter className="border-t">
       <div className="w-full">
@@ -30,7 +30,7 @@ const SelectedCoinsFooter = React.memo(({ selectedCoins, onRemoveCoin, onCreateB
         {basketCreated ? (
           <div className="flex gap-2">
             <Button 
-              onClick={onCreateBasket} 
+              onClick={onEditBasket} 
               className="flex-1 bg-blue-500 hover:bg-blue-600 text-white"
             >
               Edit Basket
@@ -54,5 +54,7 @@ const SelectedCoinsFooter = React.memo(({ selectedCoins, onRemoveCoin, onCreateB
     </CardFooter>
   );
 });
+
+SelectedCoinsFooter.displayName = 'SelectedCoinsFooter';
 
 export default SelectedCoinsFooter;

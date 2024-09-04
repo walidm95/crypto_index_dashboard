@@ -1,9 +1,11 @@
-
 import React, { useEffect, useRef, useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Input } from "@/components/ui/input";
 import { createChartInstance, addLineSeries, updateChartSize, calculateAggregatedLine } from '@/utils/chartUtils';
 import BasketStatistics from './BasketStatistics';
 
@@ -20,10 +22,23 @@ const BasketChart = ({
   componentData,
   basketStats,
   isLoading,
-  error
+  error,
+  onLoadBasket
 }) => {
   const chartContainerRef = useRef();
   const chartRef = useRef();
+  const [savedBaskets, setSavedBaskets] = useState([]);
+  const [newBasketName, setNewBasketName] = useState('');
+  const [isSavePopoverOpen, setIsSavePopoverOpen] = useState(false);
+  const [isLoadPopoverOpen, setIsLoadPopoverOpen] = useState(false);
+  const [selectedBasket, setSelectedBasket] = useState(null);
+
+  useEffect(() => {
+    const storedBaskets = localStorage.getItem('savedBaskets');
+    if (storedBaskets) {
+      setSavedBaskets(JSON.parse(storedBaskets));
+    }
+  }, []);
 
   useEffect(() => {
     if (chartContainerRef.current) {
@@ -73,51 +88,86 @@ const BasketChart = ({
     }
   }, [basketData, componentData, showComponentLines, showLongShortLines, symbolsInfo, resolution]);
 
-  const getChartTitle = () => {
-    return "Basket Chart";
+  const handleSaveBasket = () => {
+    if (newBasketName) {
+      const updatedBaskets = [...savedBaskets, { name: newBasketName, coins: selectedCoins }];
+      setSavedBaskets(updatedBaskets);
+      localStorage.setItem('savedBaskets', JSON.stringify(updatedBaskets));
+      setNewBasketName('');
+      setIsSavePopoverOpen(false);
+    }
   };
 
   return (
     <Card className="h-full flex flex-col">
-      <CardHeader>
-        <CardTitle className="text-xl font-semibold text-blue-900">{getChartTitle()}</CardTitle>
+      <CardHeader className="flex flex-row items-center justify-between space-x-4">
+        <div className="flex items-center space-x-4">
+          <Select value={resolution} onValueChange={onResolutionChange}>
+            <SelectTrigger className="w-40">
+              <SelectValue placeholder="Select resolution" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="1m">1 minute</SelectItem>
+              <SelectItem value="5m">5 minutes</SelectItem>
+              <SelectItem value="15m">15 minutes</SelectItem>
+              <SelectItem value="30m">30 minutes</SelectItem>
+              <SelectItem value="1h">1 hour</SelectItem>
+              <SelectItem value="4h">4 hour</SelectItem>
+              <SelectItem value="1d">1 day</SelectItem>
+            </SelectContent>
+          </Select>
+          <div className="flex items-center space-x-2">
+            <Switch
+              id="show-individual"
+              checked={showComponentLines}
+              onCheckedChange={setShowComponentLines}
+            />
+            <Label htmlFor="show-individual">Show Individual Coins</Label>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Switch
+              id="show-aggregates"
+              checked={showLongShortLines}
+              onCheckedChange={setShowLongShortLines}
+            />
+            <Label htmlFor="show-aggregates">Show Long/Short Aggregates</Label>
+          </div>
+        </div>
+        <div className="flex items-center space-x-2">
+          <Select onValueChange={(basket) => {
+            setSelectedBasket(basket);
+            onLoadBasket(basket);
+          }}>
+            <SelectTrigger className="w-40">
+              <SelectValue placeholder="Saved Baskets" />
+            </SelectTrigger>
+            <SelectContent>
+              {savedBaskets.map((basket, index) => (
+                <SelectItem key={index} value={basket}>{basket.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Popover open={isSavePopoverOpen} onOpenChange={setIsSavePopoverOpen}>
+            <PopoverTrigger asChild>
+              <Button variant="outline">New</Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-56">
+              <div className="flex flex-col space-y-2">
+                <Input
+                  type="text"
+                  placeholder="Basket name"
+                  value={newBasketName}
+                  onChange={(e) => setNewBasketName(e.target.value)}
+                />
+                <Button onClick={handleSaveBasket}>Save</Button>
+              </div>
+            </PopoverContent>
+          </Popover>
+        </div>
       </CardHeader>
       <CardContent className="flex-grow flex flex-col">
         {selectedCoins.length > 0 ? (
           <>
-            <div className="flex flex-wrap gap-4 mb-4">
-              <div className="flex items-center space-x-2">
-                <Select value={resolution} onValueChange={onResolutionChange}>
-                  <SelectTrigger className="w-40">
-                    <SelectValue placeholder="Select resolution" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="1m">1 minute</SelectItem>
-                    <SelectItem value="5m">5 minutes</SelectItem>
-                    <SelectItem value="15m">15 minutes</SelectItem>
-                    <SelectItem value="30m">30 minutes</SelectItem>
-                    <SelectItem value="1h">1 hour</SelectItem>
-                    <SelectItem value="1d">1 day</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="show-individual"
-                  checked={showComponentLines}
-                  onCheckedChange={setShowComponentLines}
-                />
-                <Label htmlFor="show-individual">Show Individual Coins</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="show-aggregates"
-                  checked={showLongShortLines}
-                  onCheckedChange={setShowLongShortLines}
-                />
-                <Label htmlFor="show-aggregates">Show Long/Short Aggregates</Label>
-              </div>
-            </div>
             <div className="flex-grow relative">
               {isLoading ? (
                 <div className="absolute inset-0 flex justify-center items-center">
